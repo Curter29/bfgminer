@@ -15,6 +15,20 @@
 #ifndef BFG_MINER_H
 #define BFG_MINER_H
 
+//  90_000_000 55d4a80
+// 100_000_000 5f5e100
+// 500_000_000 1dcd6500
+// 900_000_000 35a4e900
+// 1_000_000_000 3b9aca00
+// 1_294_967_295 4d2fa1ff
+// 2_000_000_000 77359400
+// 2_294_967_295 88ca6bff
+// 2_699_999_999 a0eebaff
+
+#define NONCE_START 0x0
+#define NONCE_END   0xffffffff
+#define NONCE_END_1 NONCE_END - 0x1
+
 #include "config.h"
 
 #ifdef WIN32
@@ -436,7 +450,7 @@ enum {
 
 struct cgminer_stats {
 	struct timeval start_tv;
-	
+
 	uint32_t getwork_calls;
 	struct timeval getwork_wait;
 	struct timeval getwork_wait_max;
@@ -489,7 +503,7 @@ struct cgpu_info {
 	char *dev_repr;
 	char *dev_repr_ns;
 	const char *name;
-	
+
 	int procs;
 	int proc_id;
 	char proc_repr[9];
@@ -497,7 +511,7 @@ struct cgpu_info {
 	struct cgpu_info *device;
 	struct cgpu_info *next_proc;
 	int extra_work_queue;
-	
+
 	const char *device_path;
 	void *device_data;
 	const char *dev_manufacturer;
@@ -696,7 +710,7 @@ static inline void string_elist_del(struct string_elist **head, struct string_el
 struct bfg_loaded_configfile {
 	char *filename;
 	int fileconf_load;
-	
+
 	struct bfg_loaded_configfile *next;
 };
 
@@ -767,7 +781,7 @@ void bswap_96p(void * const dest_p, const void * const src_p)
 {
 	uint32_t * const dest = dest_p;
 	const uint32_t * const src = src_p;
-	
+
 	dest[0] = bswap_32(src[2]);
 	dest[1] = bswap_32(src[1]);
 	dest[2] = bswap_32(src[0]);
@@ -780,7 +794,7 @@ void bswap_32mult(void * const dest_p, const void * const src_p, const size_t sz
 	const uint32_t *s_end = &s[sz];
 	uint32_t *d = dest_p;
 	d = &d[sz - 1];
-	
+
 	for ( ; s < s_end; ++s, --d)
 		*d = bswap_32(*s);
 }
@@ -1135,7 +1149,7 @@ struct block_info {
 	unsigned block_seen_order;  // new_blocks when this block was first seen; was 'block_no'
 	uint32_t height;
 	time_t first_seen_time;
-	
+
 	UT_hash_handle hh;
 };
 
@@ -1153,20 +1167,20 @@ struct mining_algorithm;
 struct mining_algorithm {
 	const char *name;
 	const char *aliases;
-	
+
 	enum pow_algorithm algo;
 	uint8_t ui_skip_hash_bytes;
 	uint8_t worktime_skip_prevblk_u32;
 	float reasonable_low_nonce_diff;
-	
+
 	void (*hash_data_f)(void *digest, const void *data);
-	
+
 	int goal_refs;
 	int staged;
 	int base_queue;
-	
+
 	struct mining_algorithm *next;
-	
+
 #ifdef USE_OPENCL
 	bool opencl_nodefault;
 	float (*opencl_oclthreads_to_intensity)(unsigned long oclthreads);
@@ -1182,22 +1196,22 @@ struct mining_goal_info {
 	unsigned id;
 	char *name;
 	bool is_default;
-	
+
 	struct blockchain_info *blkchain;
-	
+
 	bytes_t *generation_script;  // was opt_coinbase_script
-	
+
 	struct mining_algorithm *malgo;
 	double current_diff;
 	char current_diff_str[ALLOC_H2B_SHORTV];  // was global block_diff
 	char net_hashrate[ALLOC_H2B_SHORT];
-	
+
 	char *current_goal_detail;
-	
+
 	double diff_accepted;
-	
+
 	bool have_longpoll;
-	
+
 	UT_hash_handle hh;
 };
 
@@ -1286,25 +1300,25 @@ struct ntime_roll_limits {
 struct stratum_work {
 	// Used only as a session id for resuming
 	char *nonce1;
-	
+
 	struct bfg_tmpl_ref *tr;
 	char *job_id;
 	bool clean;
-	
+
 	bytes_t coinbase;
 	size_t nonce2_offset;
 	int n2size;
-	
+
 	int merkles;
 	bytes_t merkle_bin;
-	
+
 	uint8_t header1[36];
 	uint8_t diffbits[4];
-	
+
 	uint32_t ntime;
 	struct timeval tv_received;
 	struct ntime_roll_limits ntime_roll_limits;
-	
+
 	struct timeval tv_expire;
 
 	uint8_t target[32];
@@ -1312,9 +1326,9 @@ struct stratum_work {
 	bool transparency_probed;
 	struct timeval tv_transparency;
 	bool opaque;
-	
+
 	cglock_t *data_lock_p;
-	
+
 	struct pool *pool;
 	unsigned char work_restart_id;
 };
@@ -1455,7 +1469,7 @@ struct pool {
 
 	/* param for coinbase check */
 	struct coinbase_param cb_param;
-	
+
 	pthread_mutex_t last_work_lock;
 	struct work *last_work_copy;
 };
@@ -1509,19 +1523,19 @@ struct work {
 	int		id;
 	work_device_id_t device_id;
 	UT_hash_handle hh;
-	
+
 	// Please don't use this if it's at all possible, I'd like to get rid of it eventually.
 	void *device_data;
 	void *(*device_data_dup_func)(struct work *);
 	void (*device_data_free_func)(struct work *);
-	
+
 	double		work_difficulty;
 	float		nonce_diff;
 
 	// Allow devices to identify work if multiple sub-devices
 	// DEPRECATED: New code should be using multiple processors instead
 	int		subid;
-	
+
 	// Allow devices to timestamp work for their own purposes
 	struct timeval	tv_stamp;
 
