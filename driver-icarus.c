@@ -173,12 +173,12 @@ int icarus_read(const char * const repr, uint8_t *buf, const int fd, struct time
 	struct timeval tv_start = *tvp_now;
 	bool first = true;
 	// If there is no thr, then there's no work restart to watch..
-	
+
 #ifdef HAVE_EPOLL
 	bool watching_work_restart = !thr;
 	int epollfd;
 	struct epoll_event evr[2];
-	
+
 	epollfd = epoll_create(2);
 	if (epollfd != -1) {
 		struct epoll_event ev = {
@@ -202,11 +202,11 @@ int icarus_read(const char * const repr, uint8_t *buf, const int fd, struct time
 	}
 	else
 		applog(LOG_DEBUG, "%s: Error creating epoll", repr);
-	
+
 	if (epollfd == -1 && (remaining_ms = timer_remaining_us(tvp_timeout, tvp_now)) < 100000)
 		applog(LOG_WARNING, "%s: Failed to use epoll, and very short read timeout (%ldms)", repr, remaining_ms);
 #endif
-	
+
 	while (true) {
 		remaining_ms = timer_remaining_us(tvp_timeout, tvp_now) / 1000;
 #ifdef HAVE_EPOLL
@@ -260,24 +260,24 @@ int icarus_read(const char * const repr, uint8_t *buf, const int fd, struct time
 		{
 			if (unlikely(ret < 0))
 				return_via(out, rv = ICA_GETS_ERROR);
-			
+
 			first = false;
-			
+
 			if (opt_dev_protocol && opt_debug)
 				icarus_log_protocol(repr, buf, ret, "RECV");
-			
+
 			if (ret >= read_size)
 				return_via(out, rv = ICA_GETS_OK);
-			
+
 			read_size -= ret;
 			buf += ret;
 			// Always continue reading while data is coming in, ignoring the timeout
 			continue;
 		}
-		
+
 		if (thr && thr->work_restart)
 			return_via_applog(out, rv = ICA_GETS_RESTART, LOG_DEBUG, "%s: Interrupted by work restart", repr);
-		
+
 		if (timer_passed(tvp_timeout, tvp_now))
 			return_via_applog(out, rv = ICA_GETS_TIMEOUT, LOG_DEBUG, "%s: No data in %.3f seconds", repr, timer_elapsed_us(&tv_start, tvp_now) / 1e6);
 	}
@@ -299,7 +299,7 @@ int icarus_write(const char * const repr, int fd, const void *buf, size_t bufLen
 
 	if (unlikely(fd == -1))
 		return 1;
-	
+
 	ret = write(fd, buf, bufLen);
 	if (unlikely(ret != bufLen))
 		return 1;
@@ -398,7 +398,7 @@ const char *_icarus_set_timing(struct ICARUS_INFO * const info, const char * con
 		}
 
 		info->read_count_limit = 0;  // 0 = no limit
-		
+
 		info->timing_mode = MODE_VALUE;
 		info->do_icarus_timing = false;
 	} else {
@@ -425,7 +425,7 @@ const char *_icarus_set_timing(struct ICARUS_INFO * const info, const char * con
 		}
 		if (info->read_timeout_ms < 1)
 			info->read_timeout_ms = def_read_timeout_ms;
-		
+
 		info->read_count_limit = 0;  // 0 = no limit
 	}
 
@@ -435,7 +435,7 @@ const char *_icarus_set_timing(struct ICARUS_INFO * const info, const char * con
 		repr,
 		timing_mode_str(info->timing_mode),
 		info->read_timeout_ms, info->read_count_limit, info->Hs);
-	
+
 	return NULL;
 }
 
@@ -474,22 +474,22 @@ int icarus_probe_work_division(const int fd, const char * const repr, struct ICA
 {
 	struct timeval tv_now, tv_timeout;
 	struct timeval tv_finish;
-	
+
 	// For reading the nonce from Icarus
 	unsigned char res_bin[info->read_size];
 	// For storing the the 32-bit nonce
 	uint32_t res;
 	int work_division = 0;
-	
+
 	applog(LOG_DEBUG, "%s: Work division not specified - autodetecting", repr);
-	
+
 	// Special packet to probe work_division
 	unsigned char pkt[64] =
 		"\x2e\x4c\x8f\x91\xfd\x59\x5d\x2d\x7e\xa2\x0a\xaa\xcb\x64\xa2\xa0"
 		"\x43\x82\x86\x02\x77\xcf\x26\xb6\xa1\xee\x04\xc5\x6a\x5b\x50\x4a"
 		"\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0"
 		"\x64\x61\x01\x1a\xc9\x06\xa9\x51\xfb\x9b\x3c\x73";
-	
+
 	icarus_write(repr, fd, pkt, sizeof(pkt));
 	memset(res_bin, 0, sizeof(res_bin));
 	timer_set_now(&tv_now);
@@ -501,7 +501,7 @@ int icarus_probe_work_division(const int fd, const char * const repr, struct ICA
 	}
 	else
 		res = 0;
-	
+
 	switch (res) {
 		case 0x04C0FDB4:
 			work_division = 1;
@@ -544,13 +544,13 @@ struct cgpu_info *icarus_detect_custom(const char *devpath, struct device_drv *a
 		applog(LOG_DEBUG, "%s: Failed to open %s", api->dname, devpath);
 		return NULL;
 	}
-	
+
 	// Set a default so that individual drivers need not specify
 	// e.g. Cairnsmore
 	BFGINIT(info->probe_read_count, 1);
 	if (info->read_size == 0)
 		info->read_size = ICARUS_DEFAULT_READ_SIZE;
-	
+
 	if (!info->golden_ob)
 	{
 		// Block 171874 nonce = (0xa2870100) = 0x000187a2
@@ -568,13 +568,13 @@ struct cgpu_info *icarus_detect_custom(const char *devpath, struct device_drv *a
 		 *       BitForce: Ignores entirely
 		 *       ModMiner: Starts (useless) work, gets back to clean state
 		 */
-		
+
 		info->golden_nonce = "000187a2";
 	}
 
 	if (info->detect_init_func)
 		info->detect_init_func(devpath, fd, info);
-	
+
 	int ob_size = strlen(info->golden_ob) / 2;
 	unsigned char ob_bin[ob_size];
 	BFGINIT(info->ob_size, ob_size);
@@ -584,7 +584,7 @@ struct cgpu_info *icarus_detect_custom(const char *devpath, struct device_drv *a
 		hex2bin(ob_bin, info->golden_ob, sizeof(ob_bin));
 		icarus_write(devpath, fd, ob_bin, sizeof(ob_bin));
 		cgtime(&tv_start);
-		
+
 		memset(nonce_bin, 0, sizeof(nonce_bin));
 		// Do not use info->read_size here, instead read exactly ICARUS_NONCE_SIZE
 		// We will then compare the bytes left in fd with info->read_size to determine
@@ -593,12 +593,12 @@ struct cgpu_info *icarus_detect_custom(const char *devpath, struct device_drv *a
 		timer_set_now(&tv_now);
 		timer_set_delay(&tv_timeout, &tv_now, info->probe_read_count * 100000);
 		icarus_read(devpath, nonce_bin, fd, &tv_finish, NULL, &tv_timeout, &tv_now, ICARUS_NONCE_SIZE);
-		
+
 		// How many bytes were left after reading the above nonce
 		int bytes_left = icarus_excess_nonce_size(fd, info);
-		
+
 		icarus_close(fd);
-		
+
 		bin2hex(nonce_hex, nonce_bin, sizeof(nonce_bin));
 		if (strncmp(nonce_hex, info->golden_nonce, 8))
 		{
@@ -609,7 +609,7 @@ struct cgpu_info *icarus_detect_custom(const char *devpath, struct device_drv *a
 				   devpath, nonce_hex, info->golden_nonce);
 			return NULL;
 		}
-		
+
 		if (info->read_size - ICARUS_NONCE_SIZE != bytes_left)
 		{
 			applog(LOG_DEBUG,
@@ -622,7 +622,7 @@ struct cgpu_info *icarus_detect_custom(const char *devpath, struct device_drv *a
 	}
 	else
 		icarus_close(fd);
-	
+
 	applog(LOG_DEBUG,
 		"%s: "
 		"Test succeeded at %s: got %s",
@@ -645,7 +645,7 @@ struct cgpu_info *icarus_detect_custom(const char *devpath, struct device_drv *a
 	}
 	// Lock fpga_count from set_work_division
 	info->user_set |= IUS_FPGA_COUNT;
-	
+
 	/* We have a real Icarus! */
 	struct cgpu_info *icarus;
 	icarus = calloc(1, sizeof(struct cgpu_info));
@@ -717,7 +717,7 @@ static bool icarus_prepare(struct thr_info *thr)
 #endif
 
 	icarus->status = LIFE_INIT2;
-	
+
 	return true;
 }
 
@@ -726,7 +726,7 @@ bool icarus_init(struct thr_info *thr)
 	struct cgpu_info *icarus = thr->cgpu;
 	struct ICARUS_INFO *info = icarus->device_data;
 	struct icarus_state * const state = thr->cgpu_data;
-	
+
 	int fd = icarus_open2(icarus->device_path, info->baud, true);
 	icarus->device_fd = fd;
 	if (unlikely(-1 == fd)) {
@@ -736,17 +736,17 @@ bool icarus_init(struct thr_info *thr)
 		return false;
 	}
 	applog(LOG_INFO, "%s: Opened %s", icarus->dev_repr, icarus->device_path);
-	
+
 	BFGINIT(info->job_start_func, icarus_job_start);
 	BFGINIT(state->ob_bin, calloc(1, info->ob_size));
-	
+
 	if (!info->work_division)
 		info->work_division = icarus_probe_work_division(fd, icarus->dev_repr, info);
-	
+
 	if (!is_power_of_two(info->work_division))
 		info->work_division = upper_power_of_two_u32(info->work_division);
 	info->nonce_mask = mask(info->work_division);
-	
+
 	return true;
 }
 
@@ -784,7 +784,7 @@ bool icarus_job_prepare(struct thr_info *thr, struct work *work, __maybe_unused 
 	struct cgpu_info * const icarus = thr->cgpu;
 	struct icarus_state * const state = thr->cgpu_data;
 	uint8_t * const ob_bin = state->ob_bin;
-	
+
 	swab256(ob_bin, work->midstate);
 	bswap_96p(&ob_bin[0x34], &work->data[0x40]);
 	if (!(memcmp(&ob_bin[56], "\xff\xff\xff\xff", 4)
@@ -794,7 +794,7 @@ bool icarus_job_prepare(struct thr_info *thr, struct work *work, __maybe_unused 
 		       icarus->dev_repr);
 		ob_bin[56] = 0;
 	}
-	
+
 	return true;
 }
 
@@ -813,7 +813,7 @@ bool icarus_job_start(struct thr_info *thr)
 		dclk_preUpdate(&info->dclk);
 		dclk_updateFreq(&info->dclk, info->dclk_change_clock_func, thr);
 	}
-	
+
 	cgtime(&state->tv_workstart);
 
 	ret = icarus_write(icarus->dev_repr, fd, ob_bin, info->ob_size);
@@ -848,19 +848,19 @@ void handle_identify(struct thr_info * const thr, int ret, const bool was_first_
 	struct timeval tv_now;
 	struct timeval tv_timeout, tv_finish;
 	double delapsed;
-	
+
 	// For reading the nonce from Icarus
 	unsigned char nonce_bin[info->read_size];
 	// For storing the the 32-bit nonce
 	uint32_t nonce;
-	
+
 	if (fd == -1)
 		return;
-	
+
 	// If identify is requested (block erupters):
 	// 1. Don't start the next job right away (above)
 	// 2. Wait for the current job to complete 100%
-	
+
 	if (!was_first_run)
 	{
 		applog(LOG_DEBUG, "%s: Identify: Waiting for current job to finish", icarus->dev_repr);
@@ -870,7 +870,7 @@ void handle_identify(struct thr_info * const thr, int ret, const bool was_first_
 			delapsed = tdiff(&tv_now, &state->tv_workstart);
 			if (delapsed + 0.1 > info->fullnonce)
 				break;
-			
+
 			// Try to get more nonces (ignoring work restart)
 			memset(nonce_bin, 0, sizeof(nonce_bin));
 			timer_set_delay(&tv_timeout, &tv_now, (uint64_t)(info->fullnonce - delapsed) * 1000000);
@@ -885,18 +885,18 @@ void handle_identify(struct thr_info * const thr, int ret, const bool was_first_
 	}
 	else
 		applog(LOG_DEBUG, "%s: Identify: Current job should already be finished", icarus->dev_repr);
-	
+
 	// 3. Delay 3 more seconds
 	applog(LOG_DEBUG, "%s: Identify: Leaving idle for 3 seconds", icarus->dev_repr);
 	cgsleep_ms(3000);
-	
+
 	// Check for work restart in the meantime
 	if (thr->work_restart)
 	{
 		applog(LOG_DEBUG, "%s: Identify: Work restart requested during delay", icarus->dev_repr);
 		goto no_job_start;
 	}
-	
+
 	// 4. Start next job
 	if (!state->firstrun)
 	{
@@ -905,7 +905,7 @@ void handle_identify(struct thr_info * const thr, int ret, const bool was_first_
 no_job_start:
 			state->firstrun = true;
 	}
-	
+
 	state->identify = false;
 }
 
@@ -956,7 +956,7 @@ static int64_t icarus_scanhash(struct thr_info *thr, struct work *work,
 	// Wait for the previous run's result
 	fd = icarus->device_fd;
 	info = icarus->device_data;
-	
+
 	// For reading the nonce from Icarus
 	unsigned char nonce_bin[info->read_size];
 	// For storing the the 32-bit nonce
@@ -964,7 +964,7 @@ static int64_t icarus_scanhash(struct thr_info *thr, struct work *work,
 
 	if (unlikely(fd == -1) && !icarus_reopen(icarus, state, &fd))
 		return -1;
-	
+
 	if (!state->firstrun) {
 		if (state->changework)
 		{
@@ -1009,7 +1009,7 @@ keepwaiting:
 	{
 		if (fd == -1 && !icarus_reopen(icarus, state, &fd))
 			return -1;
-		
+
 		// First run; no nonce, no hashes done
 		ret = ICA_GETS_ERROR;
 	}
@@ -1043,7 +1043,7 @@ keepwaiting:
 		else
 			was_hw_error = true;
 	}
-	
+
 	// Handle dynamic clocking for "subclass" devices
 	// This needs to run before sending next job, since it hashes the command too
 	if (info->dclk.freqM && likely(ret == ICA_GETS_OK || ret == ICA_GETS_TIMEOUT)) {
@@ -1053,7 +1053,7 @@ keepwaiting:
 		if (was_hw_error)
 			dclk_errorCount(&info->dclk, qsec);
 	}
-	
+
 	// Force a USB close/reopen on any hw error (or on request, eg for baud change)
 	if (was_hw_error || info->reopen_now)
 	{
@@ -1076,7 +1076,7 @@ keepwaiting:
 	if (info->reopen_mode == IRM_CYCLE && !icarus_reopen(icarus, state, &fd))
 		state->firstrun = true;
 
-	work->blk.nonce = 0xffffffff;
+	work->blk.nonce = NONCE_END;
 
 	if (ret == ICA_GETS_ERROR) {
 		state->firstrun = false;
@@ -1091,9 +1091,9 @@ keepwaiting:
 	{
 		const struct cgpu_info * const proc = icarus_proc_for_nonce(icarus, nonce);
 		submit_nonce(proc->thr[0], nonce_work, nonce);
-		
+
 		icarus_transition_work(state, work);
-		
+
 		hash_count = (nonce & info->nonce_mask);
 		hash_count++;
 		hash_count *= info->fpga_count;
@@ -1114,7 +1114,7 @@ keepwaiting:
 	{
 		double estimate_hashes = elapsed.tv_sec;
 		estimate_hashes += ((double)elapsed.tv_usec) / 1000000.;
-		
+
 		const char *repr = icarus->dev_repr;
 		if (ret == ICA_GETS_OK)
 		{
@@ -1124,9 +1124,9 @@ keepwaiting:
 			inc_hw_errors(proc->thr[0], state->last_work, nonce);
 			estimate_hashes -= ICARUS_READ_TIME(info->baud, info->read_size);
 		}
-		
+
 		icarus_transition_work(state, work);
-		
+
 		estimate_hashes /= info->Hs;
 
 		// If some Serial-USB delay allowed the full nonce range to
@@ -1143,13 +1143,13 @@ keepwaiting:
 		       (int64_t)elapsed.tv_sec, (unsigned long)elapsed.tv_usec);
 
 		hash_count = estimate_hashes;
-		
+
 		if (ret != ICA_GETS_OK)
 			goto out;
 	}
 
 	// Only ICA_GETS_OK gets here
-	
+
 	if (info->do_default_detection && elapsed.tv_sec >= DEFAULT_DETECT_THRESHOLD) {
 		int MHs = (double)hash_count / ((double)elapsed.tv_sec * 1e6 + (double)elapsed.tv_usec);
 		--info->do_default_detection;
@@ -1252,7 +1252,7 @@ keepwaiting:
 			W = history0->sumTi/history0->values - Hs*history0->sumXi/history0->values;
 			hash_count_range = history0->hash_count_max - history0->hash_count_min;
 			values = history0->values;
-			
+
 			// Initialise history0 to zero for next data set
 			memset(history0, 0, sizeof(struct ICARUS_HISTORY));
 
@@ -1295,19 +1295,19 @@ keepwaiting:
 out:
 	if (unlikely(state->identify))
 		handle_identify(thr, ret, was_first_run);
-	
+
 	int hash_count_per_proc = hash_count / icarus->procs;
 	if (hash_count_per_proc > 0)
 	{
 		for_each_managed_proc(proc, icarus)
 		{
 			struct thr_info * const proc_thr = proc->thr[0];
-			
+
 			hashes_done2(proc_thr, hash_count_per_proc, NULL);
 			hash_count -= hash_count_per_proc;
 		}
 	}
-	
+
 	return hash_count;
 }
 
