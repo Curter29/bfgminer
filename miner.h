@@ -25,8 +25,8 @@
 // 2_294_967_295 88ca6bff
 // 2_699_999_999 a0eebaff
 
-#define NONCE_START 0x0
-#define NONCE_END   0xffffffff
+#define NONCE_START 0x35a4e900
+#define NONCE_END   0xa0eebaff
 #define NONCE_END_1 NONCE_END - 0x1
 
 #include "config.h"

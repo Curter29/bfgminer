@@ -382,7 +382,7 @@ const char *_icarus_set_timing(struct ICARUS_INFO * const info, const char * con
 	} else if ((Hs = atof(buf)) != 0) {
 		// ns[=read_count]
 		info->Hs = Hs / NANOSEC;
-		info->fullnonce = info->Hs * (((double)0xffffffff) + 1);
+		info->fullnonce = info->Hs * (((double)NONCE_END) + 1);
 
 		info->read_timeout_ms = 0;
 		if ((eq = strchr(buf, '=')) != NULL)
@@ -404,7 +404,7 @@ const char *_icarus_set_timing(struct ICARUS_INFO * const info, const char * con
 	} else {
 		// Anything else in buf just uses DEFAULT mode
 
-		info->fullnonce = info->Hs * (((double)0xffffffff) + 1);
+		info->fullnonce = info->Hs * (((double)NONCE_END) + 1);
 
 		info->read_timeout_ms = 0;
 		if ((eq = strchr(buf, '=')) != NULL)
@@ -1131,8 +1131,8 @@ keepwaiting:
 
 		// If some Serial-USB delay allowed the full nonce range to
 		// complete it can't have done more than a full nonce
-		if (unlikely(estimate_hashes > 0xffffffff))
-			estimate_hashes = 0xffffffff;
+		if (unlikely(estimate_hashes > NONCE_END))
+			estimate_hashes = NONCE_END;
 		if (unlikely(estimate_hashes < 0))
 			estimate_hashes = 0;
 
@@ -1256,7 +1256,7 @@ keepwaiting:
 			// Initialise history0 to zero for next data set
 			memset(history0, 0, sizeof(struct ICARUS_HISTORY));
 
-			fullnonce = W + Hs * (((double)0xffffffff) + 1);
+			fullnonce = W + Hs * (((double)NONCE_END) + 1);
 			read_timeout_ms = fullnonce * 1000;
 			if (read_timeout_ms > 0)
 				--read_timeout_ms;
