@@ -25,9 +25,11 @@
 // 2_294_967_295 88ca6bff
 // 2_699_999_999 a0eebaff
 
-#define NONCE_START 0x35a4e900
+#define NONCE_START 0x77359400
 #define NONCE_END   0xa0eebaff
 #define NONCE_END_1 NONCE_END - 0x1
+// FOR STARTUM!
+// #define NONCE_START_BYTES "\x77\x35\x94\x00"
 
 #include "config.h"
 

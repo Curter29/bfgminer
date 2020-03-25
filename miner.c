@@ -938,10 +938,11 @@ void noncelog(const struct work * const work)
 	bin2hex(data, work->data, 80);
 	bin2hex(midstate, work->midstate, 32);
 
+
 	// timestamp,proc,hash,data,midstate
-	rv = snprintf(buf, sizeof(buf), "%lu,%s,%s,%s,%s\n",
+	rv = snprintf(buf, sizeof(buf), "%lu,%s,%s,%u,%s,%s\n",
 	              (unsigned long)time(NULL), proc->proc_repr_ns,
-	              hash, data, midstate);
+	              hash, le32toh(*(uint32_t*)&work->data[76]), data, midstate);
 
 	if (unlikely(rv < 1))
 	{
@@ -10412,7 +10413,11 @@ void gen_stratum_work3(struct work * const work, struct stratum_work * const swo
 	memcpy(&work->data[36], merkle_root, 32);
 	*((uint32_t*)&work->data[68]) = htobe32(swork->ntime + timer_elapsed(&swork->tv_received, NULL));
 	memcpy(&work->data[72], swork->diffbits, 4);
-	memset(&work->data[76], 0, 4);  // nonce
+	memset(&work->data[76], 0, 4);
+
+	//STRATUM WORK NONCE BUILD
+	//memcpy(&work->data[76], NONCE_START_BYTES, 4);
+
 	memcpy(&work->data[80], workpadding_bin, 48);
 
 	work->ntime_roll_limits = swork->ntime_roll_limits;
