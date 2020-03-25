@@ -123,7 +123,7 @@ struct bitforce_data {
 	long *volts;
 	int volts_count;
 	unsigned max_queueid;
-	
+
 	bool probed;
 	bool supports_fanspeed;
 };
@@ -247,7 +247,7 @@ void _bitforce_pci_read(struct cgpu_info * const dev)
 	const uint32_t looking_for = (uint32_t)devdata->lasttag << 0x10;
 	uint32_t resp;
 	bytes_t *b = &devdata->getsbuf;
-	
+
 	if (devdata->lasttag != devdata->lasttag_read)
 	{
 		if (unlikely(bytes_len(b)))
@@ -255,18 +255,18 @@ void _bitforce_pci_read(struct cgpu_info * const dev)
 			applog(LOG_WARNING, "%s: %ld bytes remaining in read buffer at new command", dev->dev_repr, (long)bytes_len(&devdata->getsbuf));
 			bytes_reset(b);
 		}
-		
+
 		while (((resp = lowl_pci_get_word(devdata->lph, 2, 2)) & 0xff0000) != looking_for)
 			cgsleep_ms(1);
-		
+
 		resp &= 0xffff;
 		if (unlikely(resp > 0x1000))
 			resp = 0x1000;
-		
+
 		void * const buf = bytes_preappend(b, resp + LOWL_PCI_GET_DATA_PADDING);
 		if (lowl_pci_read_data(devdata->lph, buf, resp, 1, 0))
 			bytes_postappend(b, resp);
-		
+
 		devdata->lasttag_read = devdata->lasttag;
 	}
 }
@@ -276,18 +276,18 @@ ssize_t bitforce_pci_read(void * const buf, const size_t bufLen, struct cgpu_inf
 {
 	struct bitforce_data * const devdata = dev->device_data;
 	bytes_t *b = &devdata->getsbuf;
-	
+
 	_bitforce_pci_read(dev);
 	ssize_t datalen = bytes_len(b);
 	if (datalen <= 0)
 		return datalen;
-	
+
 	if (datalen > bufLen)
 		datalen = bufLen;
-	
+
 	memcpy(buf, bytes_buf(b), datalen);
 	bytes_shift(b, datalen);
-	
+
 	return datalen;
 }
 
@@ -296,12 +296,12 @@ void bitforce_pci_gets(char * const buf, size_t bufLen, struct cgpu_info * const
 {
 	struct bitforce_data * const devdata = dev->device_data;
 	bytes_t *b = &devdata->getsbuf;
-	
+
 	_bitforce_pci_read(dev);
 	ssize_t linelen = (bytes_find(b, '\n') + 1) ?: bytes_len(b);
 	if (linelen > --bufLen)
 		linelen = bufLen;
-	
+
 	memcpy(buf, bytes_buf(b), linelen);
 	bytes_shift(b, linelen);
 	buf[linelen] = '\0';
@@ -312,17 +312,17 @@ ssize_t bitforce_pci_write(struct cgpu_info * const dev, const void * const bufp
 {
 	const uint8_t *buf = bufp;
 	struct bitforce_data * const devdata = dev->device_data;
-	
+
 	if (unlikely(bufLen > 0x1000))
 		return 0;
-	
+
 	if (!lowl_pci_set_data(devdata->lph, buf, bufLen, 0, 0))
 		return 0;
 	if (++devdata->lasttag == 0)
 		++devdata->lasttag;
 	if (!lowl_pci_set_word(devdata->lph, 2, 0, ((uint32_t)devdata->lasttag << 0x10) | bufLen))
 		return 0;
-	
+
 	return bufLen;
 }
 
@@ -340,7 +340,7 @@ void bitforce_close(struct cgpu_info * const proc)
 {
 	struct cgpu_info * const dev = proc->device;
 	struct bitforce_data * const devdata = dev->device_data;
-	
+
 	if (devdata->is_open)
 		devdata->lowlif->close(dev);
 }
@@ -350,7 +350,7 @@ bool bitforce_open(struct cgpu_info * const proc)
 {
 	struct cgpu_info * const dev = proc->device;
 	struct bitforce_data * const devdata = dev->device_data;
-	
+
 	bitforce_close(proc);
 	return devdata->lowlif->open(dev);
 }
@@ -361,7 +361,7 @@ ssize_t bitforce_read(struct cgpu_info * const proc, void * const buf, const siz
 	struct cgpu_info * const dev = proc->device;
 	struct bitforce_data * const devdata = dev->device_data;
 	ssize_t rv;
-	
+
 	if (likely(devdata->is_open))
 	{
 		if (bufLen == 0)
@@ -371,7 +371,7 @@ ssize_t bitforce_read(struct cgpu_info * const proc, void * const buf, const siz
 	}
 	else
 		rv = -1;
-	
+
 	if (unlikely(opt_dev_protocol))
 	{
 		size_t datalen = (rv > 0) ? rv : 0;
@@ -380,7 +380,7 @@ ssize_t bitforce_read(struct cgpu_info * const proc, void * const buf, const siz
 		applog(LOG_DEBUG, "DEVPROTO: %s: READ(%lu): %s",
 		       dev->dev_repr, (unsigned long)bufLen, hex);
 	}
-	
+
 	return rv;
 }
 
@@ -389,12 +389,12 @@ void bitforce_gets(char * const buf, const size_t bufLen, struct cgpu_info * con
 {
 	struct cgpu_info * const dev = proc->device;
 	struct bitforce_data * const devdata = dev->device_data;
-	
+
 	if (likely(devdata->is_open))
 		devdata->lowlif->gets(buf, bufLen, dev);
 	else
 		buf[0] = '\0';
-	
+
 	if (unlikely(opt_dev_protocol))
 		applog(LOG_DEBUG, "DEVPROTO: %s: GETS: %s", dev->dev_repr, buf);
 }
@@ -404,10 +404,10 @@ ssize_t bitforce_write(struct cgpu_info * const proc, const void * const buf, co
 {
 	struct cgpu_info * const dev = proc->device;
 	struct bitforce_data * const devdata = dev->device_data;
-	
+
 	if (unlikely(!devdata->is_open))
 		return 0;
-	
+
 	return devdata->lowlif->write(dev, buf, bufLen);
 }
 
@@ -417,10 +417,10 @@ static ssize_t bitforce_send(struct cgpu_info * const proc, const void *buf, ssi
 	const int procid = data->xlink_id;
 	if (!procid)
 		return bitforce_write(proc, buf, bufLen);
-	
+
 	if (bufLen > 255)
 		return -1;
-	
+
 	size_t bufLeft = bufLen + 3;
 	char realbuf[bufLeft], *bufp;
 	ssize_t rv;
@@ -446,7 +446,7 @@ void bitforce_cmd1b(struct cgpu_info * const proc, void *buf, size_t bufsz, cons
 	if (unlikely(opt_dev_protocol))
 		applog(LOG_DEBUG, "DEVPROTO: %"PRIpreprv": CMD1: %s",
 		       proc->proc_repr, cmd);
-	
+
 	bitforce_send(proc, cmd, cmdsz);
 	bitforce_gets(buf, bufsz, proc);
 }
@@ -461,7 +461,7 @@ void bitforce_cmd1c(struct cgpu_info * const proc, void *buf, size_t bufsz, void
 		applog(LOG_DEBUG, "DEVPROTO: %"PRIpreprv": CMD1 HEX: %s",
 		       proc->proc_repr, hex);
 	}
-	
+
 	bitforce_send(proc, cmd, cmdsz);
 	bitforce_gets(buf, bufsz, proc);
 }
@@ -472,7 +472,7 @@ void bitforce_cmd2(struct cgpu_info * const proc, void *buf, size_t bufsz, const
 	bitforce_cmd1b(proc, buf, bufsz, cmd, 3);
 	if (strncasecmp(buf, "OK", 2))
 		return;
-	
+
 	if (unlikely(opt_dev_protocol))
 	{
 		char hex[(datasz * 2) + 1];
@@ -480,7 +480,7 @@ void bitforce_cmd2(struct cgpu_info * const proc, void *buf, size_t bufsz, const
 		applog(LOG_DEBUG, "DEVPROTO: %"PRIpreprv": CMD2: %s",
 		       proc->proc_repr, hex);
 	}
-	
+
 	bitforce_send(proc, data, datasz);
 	bitforce_gets(buf, bufsz, proc);
 }
@@ -490,7 +490,7 @@ void bitforce_zgx(struct cgpu_info * const proc, void *buf, size_t bufsz)
 {
 	struct cgpu_info * const dev = proc->device;
 	struct bitforce_data * const devdata = dev->device_data;
-	
+
 	if (devdata->is_open && devdata->lowlif->set_timeout)
 	{
 		devdata->lowlif->set_timeout(dev, BITFORCE_VCOM_TIMEOUT_DSEC_ZCX);
@@ -599,11 +599,11 @@ bool bitforce_detect_oneof(const char * const devpath, struct bitforce_lowl_inte
 		bitforce_close(&dummy_cgpu);
 		return false;
 	}
-	
+
 	applog(LOG_DEBUG, "Found BitForce device on %s", devpath);
-	
+
 	s = bitforce_copy_name(pdevbuf);
-	
+
 	initdata = malloc(sizeof(*initdata));
 	*initdata = (struct bitforce_init_data){
 		.lowlif = lowlif,
@@ -621,9 +621,9 @@ bool bitforce_detect_oneof(const char * const devpath, struct bitforce_lowl_inte
 		if (unlikely(!pdevbuf_len))
 			continue;
 		pdevbuf[pdevbuf_len-1] = '\0';  // trim newline
-		
+
 		applog(LOG_DEBUG, "  %s", pdevbuf);
-		
+
 		if (!strncasecmp(pdevbuf, "PROCESSOR ", 10))
 			maxchipno = max(maxchipno, atoi(&pdevbuf[10]));
 		else
@@ -691,9 +691,9 @@ bool bitforce_detect_oneof(const char * const devpath, struct bitforce_lowl_inte
 			if (unlikely(!pdevbuf_len))
 				continue;
 			pdevbuf[pdevbuf_len-1] = '\0';  // trim newline
-			
+
 			applog(LOG_DEBUG, "  %s", pdevbuf);
-			
+
 			if (!strncasecmp(pdevbuf, "PROCESSOR ", 10))
 				maxchipno = max(maxchipno, atoi(&pdevbuf[10]));
 			else
@@ -704,14 +704,14 @@ bool bitforce_detect_oneof(const char * const devpath, struct bitforce_lowl_inte
 		parallel += abs(initdata->parallels[proc]);
 	}
 	bitforce_close(&dummy_cgpu);
-	
+
 	if (unlikely((procs != 1 || parallel != 1) && initdata->style == BFS_FPGA))
 	{
 		// Only bitforce_queue supports parallelization and XLINK, so force SC mode and hope for the best
 		applog(LOG_WARNING, "SC features detected with non-SC device; this is not supported!");
 		initdata->style = BFS_65NM;
 	}
-	
+
 	// We have a real BitForce!
 	bitforce = calloc(1, sizeof(*bitforce));
 	bitforce->drv = &bitforce_drv;
@@ -729,7 +729,7 @@ bool bitforce_detect_oneof(const char * const devpath, struct bitforce_lowl_inte
 	if (s)
 		bitforce->name = s;
 	bitforce->device_data = initdata;
-	
+
 	// Skip fanspeed until we probe support for it
 	bitforce->set_device_funcs = &bitforce_set_device_funcs[1];
 
@@ -770,7 +770,7 @@ void bitforce_comm_error(struct thr_info *thr)
 {
 	struct cgpu_info *bitforce = thr->cgpu;
 	struct bitforce_data *data = bitforce->device_data;
-	
+
 	data->noncebuf[0] = '\0';
 	applog(LOG_ERR, "%"PRIpreprv": Comms error", bitforce->proc_repr);
 	dev_error(bitforce, REASON_DEV_COMMS_ERROR);
@@ -801,7 +801,7 @@ static void bitforce_clear_buffer(struct cgpu_info *bitforce)
 	struct cgpu_info * const dev = bitforce->device;
 	struct bitforce_data * const devdata = dev->device_data;
 	pthread_mutex_t *mutexp = &bitforce->device->device_mutex;
-	
+
 	mutex_lock(mutexp);
 	if (devdata->is_open)
 	{
@@ -824,12 +824,12 @@ void bitforce_reinit(struct cgpu_info *bitforce)
 	pthread_mutex_t *mutexp = &bitforce->device->device_mutex;
 	int retries = 0;
 	char pdevbuf[0x100];
-	
+
 	if (!procdata->handles_board)
 		return;
 
 	mutex_lock(mutexp);
-	
+
 	applog(LOG_WARNING, "%"PRIpreprv": Re-initialising", bitforce->proc_repr);
 
 	if (devdata->is_open)
@@ -846,7 +846,7 @@ void bitforce_reinit(struct cgpu_info *bitforce)
 	}
 
 	__bitforce_clear_buffer(bitforce);
-	
+
 	do {
 		bitforce_zgx(bitforce, pdevbuf, sizeof(pdevbuf));
 		if (unlikely(!pdevbuf[0])) {
@@ -866,19 +866,19 @@ void bitforce_reinit(struct cgpu_info *bitforce)
 		applog(LOG_ERR, "%s: Didn't recognise BitForce on %s returned: %s", bitforce->dev_repr, devpath, pdevbuf);
 		return;
 	}
-	
+
 	free((void*)bitforce->name);
 	bitforce->name = bitforce_copy_name(pdevbuf);
 
 	bitforce->sleep_ms = data->sleep_ms_default;
-	
+
 	if (bitforce->drv == &bitforce_queue_api)
 	{
 		struct work *work, *tmp;
-		
+
 		timer_set_delay_from_now(&thr->tv_poll, 0);
 		notifier_wake(thr->notifier);
-		
+
 		bitforce_cmd1b(bitforce, pdevbuf, sizeof(pdevbuf), "ZQX", 3);
 		DL_FOREACH_SAFE(thr->work_list, work, tmp)
 			work_list_del(&thr->work_list, work);
@@ -931,12 +931,12 @@ static
 float my_strtof(const char *nptr, char **endptr)
 {
 	float f = strtof(nptr, endptr);
-	
+
 	/* Cope with older software  that breaks and reads nonsense
 	 * values */
 	if (f > 100)
 		f = strtod(nptr, endptr);
-	
+
 	return f;
 }
 
@@ -993,7 +993,7 @@ static bool bitforce_get_temp(struct cgpu_info *bitforce)
 	}
 	bitforce_cmd1b(bitforce, pdevbuf, sizeof(pdevbuf), "ZLX", 3);
 	mutex_unlock(mutexp);
-	
+
 	if (data->style != BFS_FPGA && likely(voltbuf[0]))
 	{
 		// Process voltage info
@@ -1002,22 +1002,22 @@ static bool bitforce_get_temp(struct cgpu_info *bitforce)
 		for (char *p = voltbuf; p[0]; ++p)
 			if (p[0] == ',')
 				++n;
-		
+
 		long *out = malloc(sizeof(long) * n);
 		if (!out)
 			goto skipvolts;
-		
+
 		n = 0;
 		char *saveptr, *v;
 		for (v = strtok_r(voltbuf, ",", &saveptr); v; v = strtok_r(NULL, ",", &saveptr))
 			out[n++] = strtol(v, NULL, 10);
-		
+
 		data->volts_count = 0;
 		free(data->volts);
 		data->volts = out;
 		data->volts_count = n;
 	}
-	
+
 skipvolts:
 	if (unlikely(!pdevbuf[0])) {
 		struct thr_info *thr = bitforce->thr[0];
@@ -1028,7 +1028,7 @@ skipvolts:
 
 	if ((!strncasecmp(pdevbuf, "TEMP", 4)) && (s = strchr(pdevbuf + 4, ':'))) {
 		float temp = my_strtof(s + 1, &s);
-		
+
 		set_float_if_gt_zero(&data->temp[0], temp);
 		for ( ; s[0]; ++s)
 		{
@@ -1068,7 +1068,7 @@ void dbg_block_data(struct cgpu_info *bitforce)
 {
 	if (!opt_debug)
 		return;
-	
+
 	struct bitforce_data *data = bitforce->device_data;
 	char s[89];
 	bin2hex(s, &data->next_work_ob[8], 44);
@@ -1084,14 +1084,14 @@ bool bitforce_job_prepare(struct thr_info *thr, struct work *work, __maybe_unuse
 	struct bitforce_data *data = bitforce->device_data;
 	unsigned char *ob_ms = &data->next_work_ob[8];
 	unsigned char *ob_dt = &ob_ms[32];
-	
+
 	// If polling job_start, cancel it
 	if (data->poll_func == 1)
 	{
 		thr->tv_poll.tv_sec = -1;
 		data->poll_func = 0;
 	}
-	
+
 	memcpy(ob_ms, work->midstate, 32);
 	memcpy(ob_dt, work->data + 64, 12);
 	switch (data->proto)
@@ -1112,7 +1112,7 @@ bool bitforce_job_prepare(struct thr_info *thr, struct work *work, __maybe_unuse
 		case BFP_WORK:
 			work->blk.nonce = 0xffffffff;
 	}
-	
+
 	return true;
 }
 
@@ -1120,23 +1120,26 @@ static
 void bitforce_change_mode(struct cgpu_info *bitforce, enum bitforce_proto proto)
 {
 	struct bitforce_data *data = bitforce->device_data;
-	
+
 	if (data->proto == proto)
 		return;
 	if (data->proto == BFP_RANGE)
 	{
+		applog(LOG_DEBUG, "POINT  data->proto == BFP_RANGE");
 		bitforce->nonces = 0xffffffff;
 		bitforce->sleep_ms *= 5;
 		data->sleep_ms_default *= 5;
 		switch (proto)
 		{
 			case BFP_WORK:
+				applog(LOG_DEBUG, "POINT  BFP_WORK");
 				data->next_work_cmd = "ZDX";
 			default:
 				;
 		}
 		if (data->style != BFS_FPGA)
 		{
+			applog(LOG_DEBUG, "POINT  data->style != BFS_FPGA");
 			// "S|---------- MidState ----------||-DataTail-|E"
 			data->next_work_ob[7] = 45;
 			data->next_work_ob[8+32+12] = '\xAA';
@@ -1144,6 +1147,7 @@ void bitforce_change_mode(struct cgpu_info *bitforce, enum bitforce_proto proto)
 		}
 		else
 		{
+			applog(LOG_DEBUG, "POINT  MODE 1");
 			// ">>>>>>>>|---------- MidState ----------||-DataTail-|>>>>>>>>"
 			memset(&data->next_work_ob[8+32+12], '>', 8);
 			data->next_work_obsz = 60;
@@ -1152,6 +1156,7 @@ void bitforce_change_mode(struct cgpu_info *bitforce, enum bitforce_proto proto)
 	else
 	if (proto == BFP_RANGE)
 	{
+		applog(LOG_DEBUG, "POINT  MODE 2");
 		/* Split work up into 1/5th nonce ranges */
 		bitforce->nonces = 0x33333332;
 		bitforce->sleep_ms /= 5;
@@ -1172,6 +1177,7 @@ void bitforce_change_mode(struct cgpu_info *bitforce, enum bitforce_proto proto)
 static
 void bitforce_job_start(struct thr_info *thr)
 {
+	applog(LOG_DEBUG, "POINT  JOB START");
 	struct cgpu_info *bitforce = thr->cgpu;
 	struct cgpu_info * const dev = bitforce->device;
 	struct bitforce_data * const devdata = dev->device_data;
@@ -1182,11 +1188,11 @@ void bitforce_job_start(struct thr_info *thr)
 	struct timeval tv_now;
 
 	data->result_busy_polled = 0;
-	
+
 	if (data->queued)
 	{
 		uint32_t delay;
-		
+
 		// get_results collected more accurate job start time
 		mt_job_transition(thr);
 		job_start_complete(thr);
@@ -1231,9 +1237,9 @@ re_send:
 
 	cgtime(&tv_now);
 	bitforce->work_start_tv = tv_now;
-	
+
 	timer_set_delay(&thr->tv_morework, &tv_now, bitforce->sleep_ms * 1000);
-	
+
 	job_start_complete(thr);
 	return;
 
@@ -1252,7 +1258,7 @@ int bitforce_zox(struct thr_info *thr, const char *cmd, int * const out_inprog)
 	pthread_mutex_t *mutexp = &bitforce->device->device_mutex;
 	char *pdevbuf = &data->noncebuf[0];
 	int count;
-	
+
 	mutex_lock(mutexp);
 	bitforce_cmd1b(bitforce, pdevbuf, sizeof(data->noncebuf), cmd, 3);
 	if (!strncasecmp(pdevbuf, "INPROCESS:", 10))
@@ -1270,10 +1276,10 @@ int bitforce_zox(struct thr_info *thr, const char *cmd, int * const out_inprog)
 		size_t cls = strlen(pdevbuf);
 		char *pmorebuf = &pdevbuf[cls];
 		size_t szleft = sizeof(data->noncebuf) - cls, sz;
-		
+
 		if (count && data->queued)
 			cgtime(&bitforce->work_start_tv);
-		
+
 		while (true)
 		{
 			bitforce_gets(pmorebuf, szleft, bitforce);
@@ -1302,7 +1308,7 @@ int bitforce_zox(struct thr_info *thr, const char *cmd, int * const out_inprog)
 	else
 		count = -1;
 	mutex_unlock(mutexp);
-	
+
 	return count;
 }
 
@@ -1326,12 +1332,12 @@ void bitforce_job_get_results(struct thr_info *thr, struct work *work)
 	timersub(&now, &bitforce->work_start_tv, &elapsed);
 	bitforce->wait_ms = tv_to_ms(elapsed);
 	bitforce->polling = true;
-	
+
 	if (unlikely(!devdata->is_open))
 		goto commerr;
 
 	stale = stale_work(work, true);
-	
+
 	if (unlikely(bitforce->wait_ms < bitforce->sleep_ms))
 	{
 		// We're likely here because of a work restart
@@ -1353,7 +1359,7 @@ void bitforce_job_get_results(struct thr_info *thr, struct work *work)
 			count = 1;
 			break;
 		}
-		
+
 		const char * const cmd = "ZFX";
 		count = bitforce_zox(thr, cmd, NULL);
 
@@ -1373,7 +1379,7 @@ void bitforce_job_get_results(struct thr_info *thr, struct work *work)
 			unsigned char midstate[32], datatail[12];
 			char *p;
 			int i;
-			
+
 			p = pdevbuf;
 			for (i = 0; i < count; ++i)
 			{
@@ -1405,14 +1411,14 @@ void bitforce_job_get_results(struct thr_info *thr, struct work *work)
 				// We finished the next job too!
 				data->already_have_results = true;
 		}
-		
+
 		if (!count)
 			goto noqr;
 		if (pdevbuf[0] && strncasecmp(pdevbuf, "B", 1)) /* BFL does not respond during throttling */
 			break;
 
 		data->result_busy_polled = bitforce->wait_ms;
-		
+
 		if (stale)
 		{
 			applog(LOG_NOTICE, "%"PRIpreprv": Abandoning stale search to restart",
@@ -1422,7 +1428,7 @@ void bitforce_job_get_results(struct thr_info *thr, struct work *work)
 
 noqr:
 		data->result_busy_polled = bitforce->wait_ms;
-		
+
 		/* if BFL is throttling, no point checking so quickly */
 		delay_time_ms = (pdevbuf[0] ? BITFORCE_CHECK_INTERVAL_MS : 2 * WORK_CHECK_INTERVAL_MS);
 		timer_set_delay(&thr->tv_poll, &now, delay_time_ms * 1000);
@@ -1517,7 +1523,7 @@ void bitforce_process_result_nonces(struct thr_info *thr, struct work *work, cha
 	struct cgpu_info *bitforce = thr->cgpu;
 	struct bitforce_data *data = bitforce->device_data;
 	uint32_t nonce;
-	
+
 	while (1) {
 		hex2bin((void*)&nonce, pnoncebuf, 4);
 		nonce = be32toh(nonce);
@@ -1527,7 +1533,7 @@ void bitforce_process_result_nonces(struct thr_info *thr, struct work *work, cha
 				applog(LOG_WARNING, "%"PRIpreprv": Disabling broken nonce range support", bitforce->proc_repr);
 				bitforce_change_mode(bitforce, BFP_WORK);
 		}
-			
+
 		submit_nonce(thr, work, nonce);
 		if (strncmp(&pnoncebuf[8], ",", 1))
 			break;
@@ -1544,11 +1550,11 @@ bool bitforce_process_qresult_line_i(struct thr_info *thr, char *midstate, char 
 		return false;
 	if (memcmp(&work->data[64], datatail, 12))
 		return false;
-	
+
 	char *end;
 	if (strtol(&buf[90], &end, 10))
 		bitforce_process_result_nonces(thr, work, &end[1]);
-	
+
 	return true;
 }
 
@@ -1557,10 +1563,10 @@ void bitforce_process_qresult_line(struct thr_info *thr, char *buf, struct work 
 {
 	struct cgpu_info *bitforce = thr->cgpu;
 	char midstate[32], datatail[12];
-	
+
 	hex2bin((void*)midstate, buf, 32);
 	hex2bin((void*)datatail, &buf[65], 12);
-	
+
 	if (!( bitforce_process_qresult_line_i(thr, midstate, datatail, buf, work)
 	    || bitforce_process_qresult_line_i(thr, midstate, datatail, buf, thr->work)
 	    || bitforce_process_qresult_line_i(thr, midstate, datatail, buf, thr->prev_work)
@@ -1586,10 +1592,10 @@ int64_t bitforce_job_process_results(struct thr_info *thr, struct work *work, __
 	struct bitforce_data *data = bitforce->device_data;
 	char *pnoncebuf = &data->noncebuf[0];
 	int count;
-	
+
 	if (!strncasecmp(pnoncebuf, "NO-", 3))
 		return bitforce->nonces;   /* No valid nonce found */
-	
+
 	if (!strncasecmp(pnoncebuf, "NONCE-FOUND", 11))
 	{
 		bitforce_process_result_nonces(thr, work, &pnoncebuf[12]);
@@ -1630,7 +1636,7 @@ static void biforce_thread_enable(struct thr_info *thr)
 static bool bitforce_get_stats(struct cgpu_info *bitforce)
 {
 	struct bitforce_proc_data *procdata = bitforce->thr[0]->cgpu_data;
-	
+
 	if (!procdata->handles_board)
 		return true;
 	return bitforce_get_temp(bitforce);
@@ -1646,13 +1652,13 @@ static
 void bitforce_zero_stats(struct cgpu_info * const proc)
 {
 	struct bitforce_data *data = proc->device_data;
-	
+
 	// These don't get cleared when not-read, so we clear them here
 	data->volts_count = 0;
 	data->temp[0] = data->temp[1] = 0;
 	free(data->volts);
 	data->volts = NULL;
-	
+
 	proc->avg_wait_f = 0;
 }
 
@@ -1666,11 +1672,11 @@ static bool bitforce_thread_init(struct thr_info *thr)
 	int xlink_id = 0, boardno = 0;
 	struct bitforce_proc_data *first_on_this_board;
 	char buf[100];
-	
+
 	for ( ; bitforce; bitforce = bitforce->next_proc)
 	{
 		thr = bitforce->thr[0];
-		
+
 		if (unlikely(xlink_id > 30))
 		{
 			applog(LOG_ERR, "%"PRIpreprv": Failed to find XLINK address", bitforce->proc_repr);
@@ -1678,7 +1684,7 @@ static bool bitforce_thread_init(struct thr_info *thr)
 			bitforce->reinit_backoff = 1e10;
 			continue;
 		}
-		
+
 		bitforce->sleep_ms = BITFORCE_SLEEP_MS;
 		bitforce->device_data = data = malloc(sizeof(*data));
 		*data = (struct bitforce_data){
@@ -1702,7 +1708,7 @@ static bool bitforce_thread_init(struct thr_info *thr)
 			// ".......S|---------- MidState ----------||-DataTail-||Nonces|E"
 			data->next_work_ob[8+32+12+8] = '\xAA';
 			data->next_work_obs = &data->next_work_ob[7];
-			
+
 			switch (style)
 			{
 				case BFS_FPGA:  // impossible
@@ -1712,7 +1718,7 @@ static bool bitforce_thread_init(struct thr_info *thr)
 				case BFS_28NM:
 					data->max_queue_at_once = BITFORCE_MAX_BQUEUE_AT_ONCE_28NM;
 			}
-			
+
 			if (bitforce->drv == &bitforce_queue_api)
 			{
 				bitforce_change_mode(bitforce, data->parallel_protocol ? BFP_PQUEUE : BFP_BQUEUE);
@@ -1730,7 +1736,7 @@ static bool bitforce_thread_init(struct thr_info *thr)
 		else
 		{
 			data->next_work_obs = &data->next_work_ob[0];
-			
+
 			// Unconditionally change away from cold-initialized BFP_RANGE, to allow for setting up other variables
 			bitforce_change_mode(bitforce, BFP_WORK);
 			/* Initially enable support for nonce range and disable it later if it
@@ -1738,19 +1744,19 @@ static bool bitforce_thread_init(struct thr_info *thr)
 			if (opt_bfl_noncerange)
 				bitforce_change_mode(bitforce, BFP_RANGE);
 		}
-		
+
 		if (initdata->scan_interval_ms)
 			bitforce->sleep_ms = initdata->scan_interval_ms;
-		
+
 		bitforce->status = LIFE_INIT2;
-		
+
 		first_on_this_board = procdata;
 		for (int proc = 1; proc < data->parallel; ++proc)
 		{
 			bitforce = bitforce->next_proc;
 			assert(bitforce);
 			thr = bitforce->thr[0];
-			
+
 			thr->queue_full = true;
 			thr->cgpu_data = procdata = malloc(sizeof(*procdata));
 			*procdata = *first_on_this_board;
@@ -1761,12 +1767,12 @@ static bool bitforce_thread_init(struct thr_info *thr)
 			bitforce->kname = first_on_this_board->cgpu->kname;
 		}
 		applog(LOG_DEBUG, "%s: Board %d: %"PRIpreprv"-%"PRIpreprv, bitforce->dev_repr, boardno, first_on_this_board->cgpu->proc_repr, bitforce->proc_repr);
-		
+
 		++boardno;
 		while (xlink_id < 31 && !(initdata->devmask & (1 << ++xlink_id)))
 		{}
 	}
-	
+
 	bitforce = thr->cgpu->device;
 
 	free(initdata->parallels);
@@ -1778,7 +1784,7 @@ static bool bitforce_thread_init(struct thr_info *thr)
 		return false;
 	}
 	applog(LOG_INFO, "%s: Opened %s", bitforce->dev_repr, bitforce->device_path);
-	
+
 	if (style != BFS_FPGA)
 	{
 		// Clear job and results queue, to start fresh; ignore response
@@ -1787,7 +1793,7 @@ static bool bitforce_thread_init(struct thr_info *thr)
 			if (pass)
 				cgsleep_ms(10);
 			applog(LOG_DEBUG, "%s: Flushing job and results queue... pass %d", bitforce->dev_repr, pass);
-			
+
 			int last_xlink_id = -1;
 			inprog = 0;
 			for ( ; bitforce; bitforce = bitforce->next_proc)
@@ -1807,7 +1813,7 @@ static bool bitforce_thread_init(struct thr_info *thr)
 		}
 		applog(LOG_DEBUG, "%s: Flushing job and results queue DONE", bitforce->dev_repr);
 	}
-	
+
 	return true;
 }
 
@@ -1816,7 +1822,7 @@ const char *bitforce_set_voltage(struct cgpu_info *proc, const char *optname, co
 {
 	pthread_mutex_t *mutexp = &proc->device->device_mutex;
 	char cmd[3] = "VFX";
-	
+
 	const unsigned mV = round(atof(newvalue) * 1000);
 	static const unsigned n[] = {750, 730, 720, 700, 680, 670, 662, 650, 643, 630, 620, 600, 580, 560, 550, 540};
 	for (int i = 0; ; ++i)
@@ -1829,14 +1835,14 @@ const char *bitforce_set_voltage(struct cgpu_info *proc, const char *optname, co
 			break;
 		}
 	}
-	
+
 	mutex_lock(mutexp);
 	bitforce_cmd1b(proc, replybuf, 8000, cmd, 3);
 	mutex_unlock(mutexp);
-	
+
 	if (!strncasecmp(replybuf, "OK", 2))
 		return NULL;
-	
+
 	return replybuf;
 }
 
@@ -1856,7 +1862,7 @@ const char *bitforce_tui_handle_choice(struct cgpu_info *cgpu, int input)
 	struct bitforce_data *data = cgpu->device_data;
 	pthread_mutex_t *mutexp;
 	static char replybuf[0x100];
-	
+
 	if (!data->supports_fanspeed)
 		return NULL;
 	switch (input)
@@ -1873,7 +1879,7 @@ const char *bitforce_tui_handle_choice(struct cgpu_info *cgpu, int input)
 			free(intvar);
 			if ((fanspeed < 0 || fanspeed > 5) && fanspeed != 9)
 				return "Invalid fan speed\n";
-			
+
 			char cmd[4] = "Z0X";
 			cmd[1] += fanspeed;
 			mutexp = &cgpu->device->device_mutex;
@@ -1930,7 +1936,7 @@ static struct api_data *bitforce_drv_stats(struct cgpu_info *cgpu)
 		root = api_add_temp(root, "Temperature0", &(data->temp[0]), false);
 		root = api_add_temp(root, "Temperature1", &(data->temp[1]), false);
 	}
-	
+
 	for (int i = 0; i < data->volts_count; ++i)
 	{
 		float voltage = data->volts[i];
@@ -1968,7 +1974,7 @@ const char *bitforce_set_fanmode(struct cgpu_info * const proc, const char * con
 {
 	struct bitforce_data *data = proc->device_data;
 	pthread_mutex_t *mutexp = &proc->device->device_mutex;
-	
+
 	{
 		if (!data->supports_fanspeed)
 		{
@@ -1985,7 +1991,7 @@ const char *bitforce_set_fanmode(struct cgpu_info * const proc, const char * con
 			sprintf(replybuf, "invalid fanmode setting");
 			return replybuf;
 		}
-		
+
 		char cmd[4] = "Z5X";
 		cmd[1] = setting[0];
 		mutex_lock(mutexp);
@@ -1999,7 +2005,7 @@ static
 const char *bitforce_rpc_send_cmd1(struct cgpu_info * const proc, const char * const option, const char * const setting, char * const replybuf, enum bfg_set_device_replytype * const success)
 {
 	pthread_mutex_t *mutexp = &proc->device->device_mutex;
-	
+
 	{
 		mutex_lock(mutexp);
 		bitforce_cmd1b(proc, replybuf, 8000, setting, strlen(setting));
@@ -2047,23 +2053,24 @@ void bitforce_set_queue_full(struct thr_info *thr)
 {
 	struct cgpu_info *bitforce = thr->cgpu;
 	struct bitforce_data *data = bitforce->device_data;
-	
+
 	thr->queue_full = (data->queued + data->ready_to_queue >= data->queued_max) || (data->ready_to_queue >= data->max_queue_at_once);
 }
 
 static
 bool bitforce_send_queue(struct thr_info *thr)
 {
+	applog(LOG_DEBUG, "POINT QUQE 1");
 	struct cgpu_info *bitforce = thr->cgpu;
 	struct cgpu_info * const dev = bitforce->device;
 	struct bitforce_data * const devdata = dev->device_data;
 	struct bitforce_data *data = bitforce->device_data;
 	pthread_mutex_t *mutexp = &bitforce->device->device_mutex;
 	struct work *work;
-	
+
 	if (unlikely(!(devdata->is_open && data->ready_to_queue)))
 		return false;
-	
+
 	char buf[0x100];
 	int queued_ok;
 	size_t qjs_sz = (32 + 12 + 1);
@@ -2075,9 +2082,9 @@ bool bitforce_send_queue(struct thr_info *thr)
 	uint8_t qjp[qjp_sz], *qjs;
 	qjs = &qjp[qjp_sz];
 	// NOTE: qjp is build backwards here
-	
+
 	*(--qjs) = 0xfe;
-	
+
 	work = thr->work_list->prev;
 	for (int i = data->ready_to_queue; i > 0; --i, work = work->prev)
 	{
@@ -2087,7 +2094,7 @@ bool bitforce_send_queue(struct thr_info *thr)
 		if (data->style == BFS_65NM)
 			*(--qjs) = 45;
 	}
-	
+
 	*(--qjs) = data->ready_to_queue;
 	*(--qjs) = 0xc1;
 	if (data->style == BFS_65NM)
@@ -2099,7 +2106,7 @@ bool bitforce_send_queue(struct thr_info *thr)
 		*(--qjs) = 'X';
 		*(--qjs) = 'W';
 	}
-	
+
 retry:
 	mutex_lock(mutexp);
 	if (data->style != BFS_65NM)
@@ -2110,7 +2117,7 @@ retry:
 	else
 		bitforce_cmd2(bitforce, buf, sizeof(buf), "ZWX", qjp, qjp_sz);
 	mutex_unlock(mutexp);
-	
+
 	if (!strncasecmp(buf, "ERR:QUEUE", 9))
 	{
 		// Queue full :(
@@ -2134,10 +2141,10 @@ retry:
 	           data->ready_to_queue, data->queued, buf);
 		return false;
 	}
-	
+
 	if (!data->queued)
 		cgtime(&data->tv_hashmeter_start);
-	
+
 	if (data->missing_zwx)
 		queued_ok = 1;
 	else
@@ -2171,7 +2178,7 @@ retry:
 		thr->queue_full = data->ready_to_queue;
 	data->just_flushed = false;
 	data->want_to_send_queue = false;
-	
+
 	return true;
 }
 
@@ -2199,34 +2206,34 @@ bool bitforce_queue_do_results(struct thr_info *thr)
 	struct thr_info *chip_thr;
 	int counts[data->parallel];
 	bool ret = true;
-	
+
 	if (unlikely(!devdata->is_open))
 		return false;
-	
+
 	fcount = 0;
 	for (int i = 0; i < data->parallel; ++i)
 		counts[i] = 0;
-	
+
 again:
 	noncebuf = &data->noncebuf[0];
 	count = bitforce_zox(thr, "ZOX", NULL);
-	
+
 	if (unlikely(count < 0))
 	{
 		inc_hw_errors_only(thr);
 		return_via_applog(out, ret = false, LOG_ERR, "%"PRIpreprv": Received unexpected queue result response: %s", bitforce->proc_repr, noncebuf);
 	}
-	
+
 	applog(LOG_DEBUG, "%"PRIpreprv": Received %d queue results on poll (max=%d)", bitforce->proc_repr, count, (int)BITFORCE_MAX_QRESULTS);
 	if (!count)
 		goto done;
-	
+
 	noncebuf = next_line(noncebuf);
 	while ((buf = noncebuf)[0])
 	{
 		if ( (noncebuf = next_line(buf)) )
 			noncebuf[-1] = '\0';
-		
+
 		if (data->max_queueid)
 		{
 			const work_device_id_t queueid = strtol(buf, &end, 0x10);
@@ -2242,10 +2249,10 @@ gibberish:
 				applog(LOG_ERR, "%"PRIpreprv": Gibberish within queue results: %s", bitforce->proc_repr, buf);
 				continue;
 			}
-			
+
 			hex2bin(midstate, buf, 32);
 			hex2bin(datatail, &buf[65], 12);
-			
+
 			thiswork = NULL;
 			DL_FOREACH(thr->work_list, work)
 			{
@@ -2256,10 +2263,10 @@ gibberish:
 				thiswork = work;
 				break;
 			}
-			
+
 			end = &buf[89];
 		}
-		
+
 		chip_cgpu = bitforce;
 		if (data->parallel_protocol)
 		{
@@ -2273,16 +2280,16 @@ gibberish:
 				chip_cgpu = chip_cgpu->next_proc;
 		}
 		chip_thr = chip_cgpu->thr[0];
-		
+
 		applog(LOG_DEBUG, "%"PRIpreprv": Queue result: %s", chip_cgpu->proc_repr, buf);
-		
+
 		if (unlikely(!thiswork))
 		{
 			applog(LOG_ERR, "%"PRIpreprv": Failed to find work for queue results: %s", chip_cgpu->proc_repr, buf);
 			inc_hw_errors_only(chip_thr);
 			goto next_qline;
 		}
-		
+
 		if (unlikely(!end[0]))
 		{
 			applog(LOG_ERR, "%"PRIpreprv": Missing nonce count in queue results: %s", chip_cgpu->proc_repr, buf);
@@ -2299,7 +2306,7 @@ gibberish:
 		}
 		++fcount;
 		++counts[chipno];
-		
+
 finishresult:
 		if (data->parallel == 1)
 		{
@@ -2324,12 +2331,12 @@ finishresult:
 		}
 next_qline: (void)0;
 	}
-	
+
 	bitforce_set_queue_full(thr);
-	
+
 	if (count >= BITFORCE_MAX_QRESULTS)
 		goto again;
-	
+
 done:
 	if (data->parallel == 1 && (
 	        (fcount < BITFORCE_GOAL_QRESULTS && bitforce->sleep_ms < BITFORCE_MAX_QRESULT_WAIT && data->queued > 1)
@@ -2347,7 +2354,7 @@ done:
 	else
 		applog(LOG_DEBUG, "%"PRIpreprv": Received %d queue results after %ums; Wait time unchanged (queued<=%d)",
 		       bitforce->proc_repr, fcount, bitforce->sleep_ms, data->queued);
-	
+
 out:
 	cgtime(&tv_now);
 	timersub(&tv_now, &data->tv_hashmeter_start, &tv_elapsed);
@@ -2358,7 +2365,7 @@ out:
 		hashes_done(chip_thr, (uint64_t)bitforce->nonces * counts[i], &tv_elapsed, NULL);
 	}
 	data->tv_hashmeter_start = tv_now;
-	
+
 	return ret;
 }
 
@@ -2368,7 +2375,7 @@ bool bitforce_queue_append(struct thr_info *thr, struct work *work)
 	struct cgpu_info *bitforce = thr->cgpu;
 	struct bitforce_data *data = bitforce->device_data;
 	bool rv, ndq;
-	
+
 	bitforce_set_queue_full(thr);
 	rv = !thr->queue_full;
 	if (rv)
@@ -2383,7 +2390,7 @@ bool bitforce_queue_append(struct thr_info *thr, struct work *work)
 	else
 	if (!data->ready_to_queue)
 		return rv;
-	
+
 	ndq = !data->queued;
 	if ((ndq)              // Device is idle
 	 || (data->ready_to_queue >= data->max_queue_at_once)  // ...or 5 items ready to go
@@ -2400,7 +2407,7 @@ bool bitforce_queue_append(struct thr_info *thr, struct work *work)
 			data->want_to_send_queue = true;
 		}
 	}
-	
+
 	return rv;
 }
 
@@ -2449,7 +2456,7 @@ void bitforce_queue_flush_sanity_check(struct thr_info * const thr, struct _jobi
 	struct _jobinfo *item, *this;
 	uint8_t key[keysz];
 	char hex[(keysz * 2) + 1];
-	
+
 	// Iterate over the work_list and delete anything not in the hash
 	DL_FOREACH_SAFE(thr->work_list, work, tmp)
 	{
@@ -2499,7 +2506,7 @@ void bitforce_queue_flush_sanity_check(struct thr_info * const thr, struct _jobi
 				applog(LOG_WARNING, "%"PRIpreprv": Sanity check: Device %s unknown work %s (%d)", bitforce->proc_repr, "is processing", hex, item->instances);
 			if (item->flushed_instances)
 				applog(LOG_WARNING, "%"PRIpreprv": Sanity check: Device %s unknown work %s (%d)", bitforce->proc_repr, "flushed", hex, item->flushed_instances);
-			
+
 			HASH_DEL(*processing_p, item);
 			free(item);
 		}
@@ -2511,12 +2518,12 @@ void bitforce_finish_flush(struct thr_info * const thr, const int flushed)
 {
 	struct cgpu_info *bitforce = thr->cgpu;
 	struct bitforce_data * const data = bitforce->device_data;
-	
+
 	data->queued -= flushed;
-	
+
 	applog(LOG_DEBUG, "%"PRIpreprv": Flushed %u jobs from device and %d from driver (queued<=%d)",
 	       bitforce->proc_repr, flushed, data->ready_to_queue, data->queued);
-	
+
 	bitforce_set_queue_full(thr);
 	data->just_flushed = true;
 	data->want_to_send_queue = false;
@@ -2527,7 +2534,7 @@ static
 void bitforce_process_flb_result(struct thr_info * const thr, int inproc, int flushed)
 {
 	struct cgpu_info *bitforce = thr->cgpu;
-	
+
 	size_t total = inproc + flushed, readsz;
 	uint16_t buf[total];
 	readsz = bitforce_read(bitforce, buf, total * 2) / 2;
@@ -2542,7 +2549,7 @@ void bitforce_process_flb_result(struct thr_info * const thr, int inproc, int fl
 		else
 			flushed = readsz - inproc;
 	}
-	
+
 	const int keysz = sizeof(work_device_id_t);
 	struct _jobinfo *processing = NULL, *this;
 	for (int i = inproc + flushed; i--; )
@@ -2552,9 +2559,9 @@ void bitforce_process_flb_result(struct thr_info * const thr, int inproc, int fl
 		memcpy(&this->key[0], &queueid, sizeof(queueid));
 		_bitforce_queue_flush_add_to_processing(&processing, this, keysz, !(i < inproc));
 	}
-	
+
 	bitforce_queue_flush_sanity_check(thr, &processing, keysz, false);
-	
+
 	bitforce_finish_flush(thr, flushed);
 }
 
@@ -2564,7 +2571,7 @@ void bitforce_queue_flush(struct thr_info *thr)
 	struct bitforce_proc_data *procdata = thr->cgpu_data;
 	if (!procdata->handles_board)
 		return;
-	
+
 	struct cgpu_info *bitforce = thr->cgpu;
 	struct bitforce_data *data = bitforce->device_data;
 	char *buf = &data->noncebuf[0], *buf2 = NULL;
@@ -2572,10 +2579,10 @@ void bitforce_queue_flush(struct thr_info *thr)
 	int inproc = -1;
 	unsigned flushed;
 	struct _jobinfo *processing = NULL, *this;
-	
+
 	// First, eliminate all unsent works
 	bitforce_delete_last_n_work(thr, data->ready_to_queue);
-	
+
 	if (data->parallel == 1)
 		// Pre-parallelization neither needs nor supports "ZqX"
 		cmd = "ZQX";
@@ -2614,7 +2621,7 @@ void bitforce_queue_flush(struct thr_info *thr)
 		applog(LOG_DEBUG, "%"PRIpreprv": Failed to flush device queue: %s", bitforce->proc_repr, buf);
 		flushed = 0;
 	}
-	
+
 	if (flushed > data->queued)
 	{
 		applog(LOG_WARNING, "%"PRIpreprv": Flushed %u jobs from device, but only %u were queued",
@@ -2623,16 +2630,16 @@ void bitforce_queue_flush(struct thr_info *thr)
 		// We need to avoid trying to delete more items than we've sent, or a segfault is upcoming...
 		flushed = data->queued;
 	}
-	
+
 	bitforce_delete_last_n_work(thr, flushed);
 	bitforce_finish_flush(thr, flushed);
-	
+
 	// "ZqX" returns jobs in progress, allowing us to sanity check
 	// NOTE: Must process buffer into hash table BEFORE calling bitforce_queue_do_results, which clobbers it
 	// NOTE: Must do actual sanity check AFTER calling bitforce_queue_do_results, to ensure we don't delete completed jobs
-	
+
 	const size_t keysz = data->max_queueid ? sizeof(work_device_id_t) : sizeof(this->key);
-	
+
 	if (buf2)
 	{
 		// First, turn buf2 into a hash
@@ -2652,13 +2659,13 @@ void bitforce_queue_flush(struct thr_info *thr)
 			_bitforce_queue_flush_add_to_processing(&processing, this, keysz, false);
 		}
 	}
-	
+
 	bitforce_queue_do_results(thr);
-	
+
 	if (buf2)
 		// There is a race condition where the flush may have reported a job as in progress even though we completed and processed its results just now - so we just silence the sanity check
 		bitforce_queue_flush_sanity_check(thr, &processing, keysz, true);
-	
+
 final: ;
 	if (data->style == BFS_28NM)
 	{
@@ -2676,11 +2683,11 @@ void bitforce_queue_poll(struct thr_info *thr)
 	struct cgpu_info *bitforce = thr->cgpu;
 	struct bitforce_data *data = bitforce->device_data;
 	unsigned long sleep_us;
-	
+
 	if (data->queued)
 		bitforce_queue_do_results(thr);
 	sleep_us = (unsigned long)bitforce->sleep_ms * 1000;
-	
+
 	if (data->want_to_send_queue)
 		if (!bitforce_send_queue(thr))
 			if (!data->queued)
@@ -2689,7 +2696,7 @@ void bitforce_queue_poll(struct thr_info *thr)
 				inc_hw_errors_only(thr);
 				sleep_us = 1000000;
 			}
-	
+
 	timer_set_delay_from_now(&thr->tv_poll, sleep_us);
 }
 
@@ -2698,13 +2705,13 @@ static void bitforce_queue_thread_deven(struct thr_info *thr)
 	struct cgpu_info *bitforce = thr->cgpu, *thisbf;
 	struct bitforce_data *data = bitforce->device_data;
 	struct thr_info *thisthr;
-	
+
 	for (thisbf = bitforce->device; thisbf && thisbf->device_data != data; thisbf = thisbf->next_proc)
 	{}
 	for ( ; thisbf && thisbf->device_data == data; thisbf = thisbf->next_proc)
 	{
 		thisthr = bitforce->thr[0];
-		
+
 		thisthr->pause = thr->pause;
 		thisbf->deven = bitforce->deven;
 	}
@@ -2719,7 +2726,7 @@ static void bitforce_queue_thread_disable(struct thr_info *thr)
 static void bitforce_queue_thread_enable(struct thr_info *thr)
 {
 	// TODO: Maybe reinit?
-	
+
 	// Enable other threads sharing the same queue
 	bitforce_queue_thread_deven(thr);
 }
